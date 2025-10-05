@@ -1,4 +1,4 @@
-// server-final.js - 修复版本
+// server-final.js - 完整版本（包含所有必要端点）
 const express = require('express');
 const cors = require('cors');
 const mysql = require('mysql2');
@@ -30,11 +30,13 @@ app.get('/', (req, res) => {
         timestamp: new Date().toISOString(),
         endpoints: [
             '/api/test',
-            '/api/db-test', 
+            '/api/db-test',
             '/api/tables',
             '/api/events-simple',
             '/api/categories',
-            '/api/events'
+            '/api/events',
+            '/api/events/search',
+            '/api/events/:id'
         ]
     });
 });
@@ -96,11 +98,9 @@ app.get('/api/tables', async (req, res) => {
 });
 
 // 5. 简单事件查询
-
 app.get('/api/events-simple', async (req, res) => {
     console.log('📞 GET /api/events-simple');
     try {
-        // 使用正确的列名 event_id 而不是 id
         const [rows] = await db.execute('SELECT event_id, event_name, event_date FROM events LIMIT 5');
         
         res.json({
@@ -140,95 +140,8 @@ app.get('/api/categories', async (req, res) => {
         });
     }
 });
-// 活动详情API - 添加到 server-final.js
-app.get('/api/events/:id', async (req, res) => {
-    console.log('📞 GET /api/events/' + req.params.id);
-    try {
-        const eventId = req.params.id;
-        const [rows] = await db.execute(`
-            SELECT e.*, c.category_name, o.org_name as charity_name, 
-                   o.mission_statement, o.contact_email, o.phone, o.address
-            FROM events e 
-            LEFT JOIN categories c ON e.category_id = c.category_id 
-            LEFT JOIN organizations o ON e.org_id = o.org_id 
-            WHERE e.event_id = ?
-        `, [eventId]);
-        
-        if (rows.length === 0) {
-            return res.status(404).json({
-                status: 'error',
-                message: 'Event not found'
-            });
-        }
-        
-        res.json({
-            status: 'success',
-            event: rows[0],
-            timestamp: new Date().toISOString()
-        });
-    } catch (error) {
-        console.error('❌ Event details error:', error.message);
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to fetch event details',
-            error: error.message
-        });
-    }
-});
-// 搜索API - 添加到 server-final.js
-app.get('/api/events/search', async (req, res) => {
-    console.log('📞 GET /api/events/search', req.query);
-    try {
-        const { date, location, category } = req.query;
-        
-        let query = `
-            SELECT e.*, c.category_name, o.org_name as charity_name 
-            FROM events e 
-            LEFT JOIN categories c ON e.category_id = c.category_id 
-            LEFT JOIN organizations o ON e.org_id = o.org_id 
-            WHERE e.is_active = TRUE
-        `;
-        
-        const params = [];
-        
-        if (date) {
-            query += ' AND DATE(e.event_date) = ?';
-            params.push(date);
-        }
-        
-        if (location) {
-            query += ' AND e.event_location LIKE ?';
-            params.push(`%${location}%`);
-        }
-        
-        if (category) {
-            query += ' AND c.category_name = ?';
-            params.push(category);
-        }
-        
-        query += ' ORDER BY e.event_date ASC';
-        
-        console.log('Search query:', query);
-        console.log('Search params:', params);
-        
-        const [rows] = await db.execute(query, params);
-        
-        res.json({
-            status: 'success',
-            count: rows.length,
-            events: rows,
-            timestamp: new Date().toISOString()
-        });
-    } catch (error) {
-        console.error('❌ Search error:', error.message);
-        res.status(500).json({
-            status: 'error',
-            message: 'Search failed',
-            error: error.message
-        });
-    }
-});
-// 7. 主events API
+
+// 7. 获取所有活动
 app.get('/api/events', async (req, res) => {
     console.log('📞 GET /api/events');
     try {
@@ -257,10 +170,118 @@ app.get('/api/events', async (req, res) => {
         });
     }
 });
+// 9. 活动详情 - 绝对安全版本（不连接organizations表）
+app.get('/api/events/:id', async (req, res) => {
+  const eventId = req.params.id;
+  console.log('🎯 GET /api/events/:id - Event ID:', eventId);
+  console.log('🎯 This is the NEW version without mission_statement');
+
+  try {
+    // 绝对安全的查询 - 只从events表查询
+    const query = `
+      SELECT 
+        event_id as id,
+        event_name as title,
+        event_date as date,
+        event_location as location,
+        event_description as description,
+        ticket_price,
+        charity_goal,
+        current_progress,
+        is_active,
+        org_id as organization_id,
+        category_id
+      FROM events
+      WHERE event_id = ?
+    `;
+
+    console.log('📊 Safe query:', query);
+    const [rows] = await db.execute(query, [eventId]);
+    
+    console.log('✅ Results found:', rows.length);
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Event not found'
+      });
+    }
+
+    res.json({
+      status: 'success',
+      data: rows[0]
+    });
+
+  } catch (error) {
+    console.error('❌ Database error:', error.message);
+    res.status(500).json({
+      status: 'error',
+      message: 'Database query failed',
+      error: error.message
+    });
+  }
+});
+// 8. 搜索活动 - 修复版本
+app.get('/api/events/search', async (req, res) => {
+    console.log('📞 GET /api/events/search', req.query);
+    try {
+        const { date, location, category } = req.query;
+        
+        let query = `
+            SELECT e.*, c.category_name, o.org_name as charity_name
+            FROM events e
+            LEFT JOIN categories c ON e.category_id = c.category_id
+            LEFT JOIN organizations o ON e.org_id = o.org_id
+            WHERE e.is_active = TRUE
+        `;
+        
+        const params = [];
+        
+        if (date) {
+            query += ' AND DATE(e.event_date) = ?';
+            params.push(date);
+        }
+        
+        if (location) {
+            query += ' AND e.event_location LIKE ?';
+            params.push(`%${location}%`);
+        }
+        
+        if (category) {
+            query += ' AND c.category_name = ?';
+            params.push(category);
+        }
+        
+        query += ' ORDER BY e.event_date ASC';
+        
+        console.log('🔍 Search query:', query);
+        console.log('🔍 Search params:', params);
+        
+        const [rows] = await db.execute(query, params);
+        
+        // 修复：即使没有结果也返回成功，而不是错误
+        res.json({
+            status: 'success',
+            count: rows.length,
+            events: rows,
+            timestamp: new Date().toISOString()
+        });
+        
+    } catch (error) {
+        console.error('❌ Search error:', error.message);
+        res.status(500).json({
+            status: 'error',
+            message: 'Search failed',
+            error: error.message
+        });
+    }
+});
+
+
 
 // ===== 错误处理 =====
 
-// 404处理 - 必须放在所有路由之后，不要使用 '*'
+// 404处理 - 必须放在所有路由之后
 app.use((req, res) => {
     console.log(`❌ 404: ${req.method} ${req.originalUrl}`);
     res.status(404).json({
@@ -271,10 +292,12 @@ app.use((req, res) => {
             'GET /',
             'GET /api/test',
             'GET /api/db-test',
-            'GET /api/tables', 
+            'GET /api/tables',
             'GET /api/events-simple',
             'GET /api/categories',
-            'GET /api/events'
+            'GET /api/events',
+            'GET /api/events/search',
+            'GET /api/events/:id'
         ]
     });
 });
@@ -293,6 +316,7 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
     console.log('='.repeat(60));
     console.log('🎉 CHARITY EVENTS API SERVER STARTED');
+    console.log('🎯 Event details API: FIXED (no mission_statement)');
     console.log('='.repeat(60));
     console.log(`📍 Server: http://localhost:${PORT}`);
     console.log('📚 Available Endpoints:');
@@ -303,6 +327,8 @@ app.listen(PORT, () => {
     console.log('   👉 GET  /api/events-simple - Simple events query');
     console.log('   👉 GET  /api/categories   - Get all categories');
     console.log('   👉 GET  /api/events       - Get all events');
+    console.log('   👉 GET  /api/events/search - Search events');
+    console.log('   👉 GET  /api/events/:id   - Get event details');
     console.log('='.repeat(60));
     console.log('⏰ Server started at:', new Date().toISOString());
     console.log('='.repeat(60));

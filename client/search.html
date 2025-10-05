@@ -12,54 +12,194 @@
             <h1>Charity Events</h1>
             <ul>
                 <li><a href="index.html">Home</a></li>
-                <li><a href="search.html" class="active">Search Events</a></li>
+                <li><a href="search.html">Search Events</a></li>
             </ul>
         </div>
     </nav>
-
+    
     <main>
-        <!-- 搜索表单 -->
+        <div id="error-message" class="error" style="display: none;"></div>
+        
         <section class="search-section">
-            <h2>Find Charity Events</h2>
-            <form id="search-form">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="date">Date:</label>
-                        <input type="date" id="date" name="date">
-                    </div>
-                    <div class="form-group">
-                        <label for="location">Location:</label>
-                        <input type="text" id="location" name="location" placeholder="Enter location...">
-                    </div>
-                    <div class="form-group">
-                        <label for="category">Category:</label>
-                        <select id="category" name="category">
-                            <option value="">All Categories</option>
-                            <!-- 动态加载类别 -->
-                        </select>
-                    </div>
-                </div>
-                <div class="form-actions">
-                    <button type="submit" class="btn-primary">Search Events</button>
-                    <button type="button" id="clear-btn" class="btn-secondary">Clear Filters</button>
-                </div>
-            </form>
+            <h2>Search Events</h2>
+            <div class="search-filters">
+                <input type="date" id="date-filter" placeholder="Date">
+                <input type="text" id="location-filter" placeholder="Location">
+                <select id="category-filter">
+                    <option value="all">All Categories</option>
+                </select>
+                <button onclick="performSearch()">Search</button>
+                <button onclick="clearFilters()" class="btn-secondary">Clear Filters</button>
+            </div>
         </section>
-
-        <!-- 搜索结果 -->
-        <section class="results-section">
-            <h3>Search Results</h3>
-            <div id="error-message" class="error" style="display: none;"></div>
-            <div id="loading-message" class="loading" style="display: none;">Searching events...</div>
-            <div id="search-results" class="events-grid">
-                <div class="no-search">
-                    <p>Use the search form above to find charity events.</p>
-                </div>
+        
+        <section class="events-section">
+            <div id="loading-message" class="loading" style="display: none;">Loading events...</div>
+            <div id="events-container">
+                <!-- Events will be loaded here -->
             </div>
         </section>
     </main>
 
     <script src="js/main.js"></script>
-    <script src="js/search.js"></script>
+    <script>
+let allEvents = [];
+
+// 页面加载时初始化
+document.addEventListener('DOMContentLoaded', function() {
+    loadAllEvents();
+});
+
+// 加载所有事件 - 使用直接fetch
+async function loadAllEvents() {
+    try {
+        showLoading();
+        console.log('📡 Loading events from API...');
+        
+        const response = await fetch('http://localhost:5000/api/events');
+        console.log('📡 Response status:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('✅ Events data:', data);
+        
+        if (data.status === 'success') {
+            allEvents = data.events;
+            console.log('✅ Loaded events:', allEvents.length);
+            populateCategoryFilter();
+            displayEvents(allEvents);
+        } else {
+            throw new Error(data.message || 'Failed to load events');
+        }
+    } catch (error) {
+        console.error('❌ Failed to load events:', error);
+        showError('Failed to load events: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+// 从事件数据中提取分类
+function populateCategoryFilter() {
+    const categoryFilter = document.getElementById('category-filter');
+    const categories = [...new Set(allEvents.map(event => event.category_name).filter(Boolean))];
+    console.log('📋 Categories found:', categories);
+    
+    categories.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category;
+        option.textContent = category;
+        categoryFilter.appendChild(option);
+    });
+}
+
+// 执行搜索（客户端筛选）
+function performSearch() {
+    const date = document.getElementById('date-filter').value;
+    const location = document.getElementById('location-filter').value;
+    const category = document.getElementById('category-filter').value;
+    
+    console.log('🔍 Performing search with filters:', { date, location, category });
+    
+    try {
+        hideError();
+        
+        let filteredEvents = [...allEvents];
+        
+        // 日期筛选
+        if (date) {
+            filteredEvents = filteredEvents.filter(event => {
+                const eventDate = new Date(event.event_date).toISOString().split('T')[0];
+                return eventDate === date;
+            });
+        }
+        
+        // 地点筛选
+        if (location) {
+            filteredEvents = filteredEvents.filter(event => 
+                event.event_location.toLowerCase().includes(location.toLowerCase())
+            );
+        }
+        
+        // 分类筛选
+        if (category && category !== 'all') {
+            filteredEvents = filteredEvents.filter(event => 
+                event.category_name === category
+            );
+        }
+        
+        console.log('✅ Filtered events:', filteredEvents.length);
+        displayEvents(filteredEvents);
+        
+    } catch (error) {
+        console.error('Search error:', error);
+        showError('Search failed: ' + error.message);
+    }
+}
+
+// 清除筛选器
+function clearFilters() {
+    document.getElementById('date-filter').value = '';
+    document.getElementById('location-filter').value = '';
+    document.getElementById('category-filter').value = 'all';
+    displayEvents(allEvents);
+}
+
+// 显示加载中
+function showLoading() {
+    document.getElementById('loading-message').style.display = 'block';
+    document.getElementById('events-container').style.display = 'none';
+}
+
+// 隐藏加载中
+function hideLoading() {
+    document.getElementById('loading-message').style.display = 'none';
+    document.getElementById('events-container').style.display = 'block';
+}
+
+// 显示错误
+function showError(message) {
+    const errorDiv = document.getElementById('error-message');
+    if (errorDiv) {
+        errorDiv.textContent = message;
+        errorDiv.style.display = 'block';
+    }
+}
+
+// 隐藏错误
+function hideError() {
+    const errorDiv = document.getElementById('error-message');
+    if (errorDiv) {
+        errorDiv.style.display = 'none';
+    }
+}
+
+// 显示事件列表
+function displayEvents(events) {
+    const container = document.getElementById('events-container');
+    console.log('🖥️ Displaying events:', events.length);
+    
+    if (events.length === 0) {
+        container.innerHTML = '<p class="no-events">No events found matching your criteria.</p>';
+        return;
+    }
+    
+    container.innerHTML = events.map(event => `
+        <div class="event-card">
+            <h3>${event.event_name}</h3>
+            <p><strong>Date:</strong> ${new Date(event.event_date).toLocaleDateString()}</p>
+            <p><strong>Location:</strong> ${event.event_location}</p>
+            <p><strong>Category:</strong> ${event.category_name || 'General'}</p>
+            <p><strong>Organizer:</strong> ${event.charity_name || 'Hope Light Foundation'}</p>
+            <p>${event.event_description}</p>
+            <p><strong>Ticket Price:</strong> ${event.ticket_price !== "0.00" ? '$' + parseFloat(event.ticket_price).toFixed(2) : 'Free'}</p>
+            <a href="event-details.html?id=${event.event_id}" class="btn-primary">View Details</a>
+        </div>
+    `).join('');
+}
+</script>
 </body>
 </html>
