@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Details - Charity Events</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <h1>Charity Events</h1>
+            <ul>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="search.html">Search Events</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main>
+        <div id="error-message" class="error" style="display: none;"></div>
+        <div id="loading-message" class="loading">Loading event details...</div>
+        
+        <div id="event-details" style="display: none;">
+            <!-- 动态加载的活动详情将在这里显示 -->
+        </div>
+        
+        <!-- 注册模态框 -->
+        <div id="register-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <span class="close-btn">&times;</span>
+                <h3>Registration</h3>
+                <p>This feature is currently under construction.</p>
+                <p>Please check back later to register for this event.</p>
+                <button class="btn-secondary" id="close-modal">Close</button>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/main.js"></script>
+    <script src="js/event-details.js"></script>
+</body>
+</html>
