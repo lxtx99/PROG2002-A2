@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Charity Events - Home</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <h1>Charity Events</h1>
+            <ul>
+                <li><a href="index.html" class="active">Home</a></li>
+                <li><a href="search.html">Search Events</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main>
+        <!-- 英雄区域 -->
+        <section class="hero">
+            <div class="hero-content">
+                <h2>Make a Difference Together</h2>
+                <p>Join our charity events and help make the world a better place. Every participation counts!</p>
+                <div class="organization-info">
+                    <h3>Hope Light Foundation</h3>
+                    <p>Helping underprivileged children access education opportunities since 2010.</p>
+                    <p>📧 contact@hopelight.org | 📞 (02) 1234 5678</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 活动列表区域 -->
+        <section class="events-section">
+            <h2>Upcoming Charity Events</h2>
+            <div id="error-message" class="error" style="display: none;"></div>
+            <div id="loading-message" class="loading">Loading events...</div>
+            <div id="events-container" class="events-grid" style="display: none;">
+                <!-- 动态加载的活动将在这里显示 -->
+            </div>
+        </section>
+    </main>
+
+    <script src="js/main.js"></script>
+    <script src="js/home.js"></script>
+</body>
+</html>
