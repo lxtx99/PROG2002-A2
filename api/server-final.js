@@ -140,7 +140,94 @@ app.get('/api/categories', async (req, res) => {
         });
     }
 });
-
+// 活动详情API - 添加到 server-final.js
+app.get('/api/events/:id', async (req, res) => {
+    console.log('📞 GET /api/events/' + req.params.id);
+    try {
+        const eventId = req.params.id;
+        const [rows] = await db.execute(`
+            SELECT e.*, c.category_name, o.org_name as charity_name, 
+                   o.mission_statement, o.contact_email, o.phone, o.address
+            FROM events e 
+            LEFT JOIN categories c ON e.category_id = c.category_id 
+            LEFT JOIN organizations o ON e.org_id = o.org_id 
+            WHERE e.event_id = ?
+        `, [eventId]);
+        
+        if (rows.length === 0) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Event not found'
+            });
+        }
+        
+        res.json({
+            status: 'success',
+            event: rows[0],
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('❌ Event details error:', error.message);
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch event details',
+            error: error.message
+        });
+    }
+});
+// 搜索API - 添加到 server-final.js
+app.get('/api/events/search', async (req, res) => {
+    console.log('📞 GET /api/events/search', req.query);
+    try {
+        const { date, location, category } = req.query;
+        
+        let query = `
+            SELECT e.*, c.category_name, o.org_name as charity_name 
+            FROM events e 
+            LEFT JOIN categories c ON e.category_id = c.category_id 
+            LEFT JOIN organizations o ON e.org_id = o.org_id 
+            WHERE e.is_active = TRUE
+        `;
+        
+        const params = [];
+        
+        if (date) {
+            query += ' AND DATE(e.event_date) = ?';
+            params.push(date);
+        }
+        
+        if (location) {
+            query += ' AND e.event_location LIKE ?';
+            params.push(`%${location}%`);
+        }
+        
+        if (category) {
+            query += ' AND c.category_name = ?';
+            params.push(category);
+        }
+        
+        query += ' ORDER BY e.event_date ASC';
+        
+        console.log('Search query:', query);
+        console.log('Search params:', params);
+        
+        const [rows] = await db.execute(query, params);
+        
+        res.json({
+            status: 'success',
+            count: rows.length,
+            events: rows,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('❌ Search error:', error.message);
+        res.status(500).json({
+            status: 'error',
+            message: 'Search failed',
+            error: error.message
+        });
+    }
+});
 // 7. 主events API
 app.get('/api/events', async (req, res) => {
     console.log('📞 GET /api/events');
