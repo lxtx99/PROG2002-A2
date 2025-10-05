@@ -153,14 +153,6 @@ main {
     color: #555;
 }
 
-.event-description {
-    color: #666;
-    margin-bottom: 1rem;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
 
 .event-details {
     background: #f8f9fa;
