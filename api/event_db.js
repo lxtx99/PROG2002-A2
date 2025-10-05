@@ -11,7 +11,15 @@ const pool = mysql.createPool({
     queueLimit: 0
 });
 
-// 将pool转换为Promise接口以便使用async/await
-const promisePool = pool.promise();
+// 测试连接
+pool.getConnection((err, connection) => {
+    if (err) {
+        console.error('❌ Database connection error:', err.message);
+    } else {
+        console.log('✅ Database connected successfully');
+        connection.release();
+    }
+});
 
+const promisePool = pool.promise();
 module.exports = promisePool;
