@@ -176,6 +176,7 @@ app.get('/api/events/:id', async (req, res) => {
   console.log('🎯 GET /api/events/:id - Event ID:', eventId);
   console.log('🎯 This is the NEW version without mission_statement');
 
+  
   try {
     // 绝对安全的查询 - 只从events表查询
     const query = `
